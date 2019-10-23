@@ -211,6 +211,13 @@ def attach_converter(method, converter):
             ctx.method_kwargs = kwargs
             ctx.method_return = outputs
                 
+            t_bone = None
+            for a in args:
+                if isinstance(a, torch.Tensor):
+                    t_bone = a.shape
+            selfie = args[0] if '.forward' in str(method) else None
+            print('%s %s %s %s' % (converter.__name__, method, selfie, t_bone))
+
             converter(ctx)
 
             # convert to None so conversion will fail for unsupported layers

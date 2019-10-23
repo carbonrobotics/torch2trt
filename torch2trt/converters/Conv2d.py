@@ -2,6 +2,9 @@ from torch2trt.torch2trt import *
 from torch2trt.module_test import add_module_test
 
 
+CONV_LAYER_GEN = 0
+
+
 @tensorrt_converter('torch.nn.Conv2d.forward')
 def convert_Conv2d(ctx):
     module = ctx.method_args[0]
@@ -40,6 +43,10 @@ def convert_Conv2d(ctx):
     layer.stride = stride
     layer.padding = padding
     layer.dilation = dilation
+
+    global CONV_LAYER_GEN
+    CONV_LAYER_GEN += 1
+    layer.name =  '%s #%d' % (module, CONV_LAYER_GEN)
 
     if module.groups is not None:
         layer.num_groups = module.groups
