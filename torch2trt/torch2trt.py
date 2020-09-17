@@ -1,3 +1,4 @@
+import traceback
 import torch
 import tensorrt as trt
 from copy import copy
@@ -278,6 +279,10 @@ def attach_converter(ctx, method, converter, method_str):
             ctx.method_kwargs = kwargs
             ctx.method_return = outputs
             ctx.method_str = method_str
+
+            # print where the function was called in our code
+            stack = traceback.extract_stack()
+            print(f">>> {ctx.method_str}() {[f for f in stack if 'deeplearning' in f.filename][-1]}")
 
             #             print('%s' % (converter.__name__,))
             converter["converter"](ctx)
