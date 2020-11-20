@@ -533,7 +533,7 @@ def torch2trt(module,
         parser.parse(onnx_bytes)
         
     else:
-        network = builder.create_network()
+        network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
         with ConversionContext(network) as ctx:
 
             ctx.add_inputs(inputs, input_names)
