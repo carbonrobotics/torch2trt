@@ -32,7 +32,7 @@ class DatasetCalibrator(trt.IInt8Calibrator):
         # create buffers that will hold data batches
         self.buffers = []
         for tensor in inputs:
-            size = (batch_size,) + tuple(tensor.shape[1:])
+            size = (batch_size,) + tuple(tensor.shape[0:])
             buf = torch.zeros(size=size, dtype=tensor.dtype, device=tensor.device).contiguous()
             self.buffers.append(buf)
             

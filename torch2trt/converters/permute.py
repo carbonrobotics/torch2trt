@@ -10,13 +10,13 @@ def convert_permute(ctx):
     
     # permutation -1 because TRT does not include batch dim
     if isinstance(ctx.method_args[1], int):
-        permutation = tuple(ctx.method_args[1:])  # handle permute(a, b, c)
+        permutation = tuple(ctx.method_args[0:])  # handle permute(a, b, c)
     else:
         permutation = tuple(ctx.method_args[1])   # handle permute([a, b, c])
         
     assert(permutation[0] == 0)  # cannot move batch dim
     
-    trt_permutation = tuple([p - 1 for p in permutation])[1:]
+    trt_permutation = tuple([p for p in permutation])[0:]
     
     layer = ctx.network.add_shuffle(input_trt)
     layer.second_transpose = tuple(trt_permutation)

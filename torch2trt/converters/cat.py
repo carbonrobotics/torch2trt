@@ -9,10 +9,10 @@ def convert_cat(ctx):
 
     output = ctx.method_return
     trt_inputs = add_missing_trt_tensors(ctx.network, inputs)
-    trt_inputs = broadcast_trt_tensors(ctx.network, trt_inputs, len(output.shape) - 1)
+    trt_inputs = broadcast_trt_tensors(ctx.network, trt_inputs, len(output.shape))
 
     layer = ctx.network.add_concatenation(inputs=trt_inputs)
-    layer.axis = dim - 1
+    layer.axis = dim
     output._trt = layer.get_output(0)
 
 class Cat(torch.nn.Module):

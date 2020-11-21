@@ -20,7 +20,7 @@ def convert_softmax(ctx):
     if dim < 0:
         dim = len(input.shape) + dim
 
-    axes = 1 << (dim - 1)
+    axes = 1 << (dim)
 
     layer = ctx.network.add_softmax(input=input_trt)
     layer.axes = axes

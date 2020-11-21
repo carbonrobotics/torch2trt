@@ -91,14 +91,14 @@ def torch_dim_to_trt_axes(dim):
     # create axes bitmask for reduce layer
     axes = 0
     for d in dim:
-        axes |= 1 << (d - 1)  # -1 to remove batch dimension
+        axes |= 1 << (d)  # 
 
     return axes
 
 
 def add_trt_constant(network, tensor):
-    shape = tuple(tensor.shape[1:])
-    array = tensor[0].detach().cpu().numpy()
+    shape = tuple(tensor.shape)
+    array = tensor.detach().cpu().numpy()
     layer = network.add_constant(shape, array)
     return layer.get_output(0)
 
@@ -147,7 +147,8 @@ def add_missing_trt_tensors(network, tensors):
                     num_preceding_ones += 1
                 else:
                     break
-            shape = tuple(t.shape[num_preceding_ones:])
+            shape = tuple(t.shape[0:])
+            print(f"shape: {shape}")
             
             weight = t.detach().cpu().numpy()
             t._trt = network.add_constant(shape, weight).get_output(0)
@@ -396,7 +397,7 @@ class ConversionContext(object):
             if not hasattr(torch_input, "_trt"):
                 trt_tensor = self.network.add_input(
                     name=names[i],
-                    shape=tuple(torch_input.shape)[1:],
+                    shape=tuple(torch_input.shape),
                     dtype=torch_dtype_to_trt(torch_input.dtype),
                 )
                 trt_tensor.location = torch_device_to_trt(torch_input.device)

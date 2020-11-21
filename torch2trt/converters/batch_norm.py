@@ -1,15 +1,16 @@
 from torch2trt.torch2trt import *
 from torch2trt.module_test import add_module_test
+import pdb
 
 @tensorrt_converter('torch.nn.functional.batch_norm', enabled=trt_version() >= '7.0')
 def convert_batch_norm_trt7(ctx):
 
-    input = get_arg(ctx, 'input', pos=0, default=None) 
+    input = get_arg(ctx, 'input', pos=0, default=None).unsqueeze(0)
     running_mean = get_arg(ctx, 'running_mean', pos=1, default=None) 
     running_var = get_arg(ctx, 'running_var', pos=2, default=None) 
 
-    weight = get_arg(ctx, 'weight', pos=3, default=None) 
-    bias = get_arg(ctx, 'bias', pos=4, default=None) 
+    weight = get_arg(ctx, 'weight', pos=3, default=None)
+    bias = get_arg(ctx, 'bias', pos=4, default=None)
     eps = get_arg(ctx, 'eps', pos=7, default=10e-6) 
 
     input_trt = add_missing_trt_tensors(ctx.network, [input])[0]
@@ -19,7 +20,7 @@ def convert_batch_norm_trt7(ctx):
     bias = bias.detach().cpu().numpy() - running_mean.detach().cpu().numpy() * scale
     power = np.ones_like(scale)
     
-    layer = ctx.network.add_scale_nd(input_trt, trt.ScaleMode.CHANNEL, bias, scale, power, 0)
+    layer = ctx.network.add_scale_nd(input_trt, trt.ScaleMode.CHANNEL, bias, scale, power, 2)
     output._trt = layer.get_output(0)
 
 

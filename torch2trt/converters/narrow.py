@@ -16,7 +16,7 @@ def convert_narrow(ctx):
     shape[dim] = ctx.method_args[3] 
     # not consider batch dimension
     input_trt = trt_(ctx.network,inputs)
-    layer = ctx.network.add_slice(input=input_trt,start=start[1:], shape=shape[1:],stride=stride[1:])
+    layer = ctx.network.add_slice(input=input_trt,start=start[0:], shape=shape[0:],stride=stride[0:])
     output._trt = layer.get_output(0)
 
 class Narrow(torch.nn.Module):
