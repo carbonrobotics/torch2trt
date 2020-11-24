@@ -67,9 +67,9 @@ def convert_interpolate_trt7(ctx):
     shape = size
     if shape != None:
         if isinstance(shape, collections.Sequence):
-           shape  = [input.size(1)] + list(shape)
+           shape  = [input.size(0), input.size(1)] + list(shape)
         else:
-            shape = [input.size(1)] + [shape] * input_dim
+            shape = [input.size(0), input.size(1)] + [shape] * input_dim
 
         layer.shape = shape
 

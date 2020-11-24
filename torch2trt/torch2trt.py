@@ -549,6 +549,7 @@ def torch2trt(module,
     builder.fp16_mode = fp16_mode
     builder.max_batch_size = max_batch_size
     builder.strict_type_constraints = strict_type_constraints
+    builder.debug_sync = True
 
     if int8_mode:
 

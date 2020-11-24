@@ -5,7 +5,7 @@ import pdb
 @tensorrt_converter('torch.nn.functional.batch_norm', enabled=trt_version() >= '7.0')
 def convert_batch_norm_trt7(ctx):
 
-    input = get_arg(ctx, 'input', pos=0, default=None).unsqueeze(0)
+    input = get_arg(ctx, 'input', pos=0, default=None)
     running_mean = get_arg(ctx, 'running_mean', pos=1, default=None) 
     running_var = get_arg(ctx, 'running_var', pos=2, default=None) 
 
@@ -20,7 +20,7 @@ def convert_batch_norm_trt7(ctx):
     bias = bias.detach().cpu().numpy() - running_mean.detach().cpu().numpy() * scale
     power = np.ones_like(scale)
     
-    layer = ctx.network.add_scale_nd(input_trt, trt.ScaleMode.CHANNEL, bias, scale, power, 2)
+    layer = ctx.network.add_scale_nd(input_trt, trt.ScaleMode.CHANNEL, bias, scale, power, 1)
     output._trt = layer.get_output(0)
 
 

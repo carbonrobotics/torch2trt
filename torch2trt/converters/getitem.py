@@ -31,6 +31,9 @@ def convert_tensor_getitem(ctx):
     
     # Step 1 - Replace ellipsis with expanded slices
     
+    if isinstance(slices, int) or isinstance(slices, slice):
+        slices = (slices,)
+    
     num_ellipsis = len(input.shape) - num_slice_types(slices)
     
     new_slices = []
