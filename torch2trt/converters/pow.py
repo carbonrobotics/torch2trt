@@ -6,22 +6,26 @@ from torch2trt.module_test import add_module_test
 @tensorrt_converter('torch.Tensor.__ipow__')
 @tensorrt_converter('torch.Tensor.__pow__')
 def convert_pow(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     input_a = ctx.method_args[0]
     input_b = ctx.method_args[1]
     output = ctx.method_return
     input_a_trt, input_b_trt = add_missing_trt_tensors(ctx.network, [input_a, input_b])
-    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape))
+    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape) - implicit_batch_offset)
     layer = ctx.network.add_elementwise(input_a_trt, input_b_trt, trt.ElementWiseOperation.POW)
     output._trt = layer.get_output(0)
 
     
 @tensorrt_converter('torch.Tensor.__rpow__')
 def convert_pow(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     input_a = ctx.method_args[1]
     input_b = ctx.method_args[0]  # flipped for rpow
     output = ctx.method_return
     input_a_trt, input_b_trt = add_missing_trt_tensors(ctx.network, [input_a, input_b])
-    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape))
+    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape) - implicit_batch_offset)
     layer = ctx.network.add_elementwise(input_a_trt, input_b_trt, trt.ElementWiseOperation.POW)
     output._trt = layer.get_output(0)
     

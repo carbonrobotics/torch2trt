@@ -8,7 +8,8 @@ def convert_prelu(ctx):
     weight = get_arg(ctx, 'weight', pos=1, default=None)
     output = ctx.method_return
     
-    weight_shape = [1] * (len(input.shape))
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+    weight_shape = [1] * (len(input.shape) - implicit_batch_offset)
     weight_shape[0] = weight.numel()
     
     input_trt = add_missing_trt_tensors(ctx.network, [input])[0]

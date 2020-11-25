@@ -20,7 +20,8 @@ def convert_softmax(ctx):
     if dim < 0:
         dim = len(input.shape) + dim
 
-    axes = 1 << (dim)
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+    axes = 1 << (dim - implicit_batch_offset)
 
     layer = ctx.network.add_softmax(input=input_trt)
     layer.axes = axes

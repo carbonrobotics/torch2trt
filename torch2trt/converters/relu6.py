@@ -10,11 +10,13 @@ def convert_functional_relu6(ctx):
 
 @tensorrt_converter('torch.nn.ReLU6.forward')
 def convert_relu6(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     input = ctx.method_args[1]
     output = ctx.method_return
 
     input_a_trt, input_b_trt = add_missing_trt_tensors(ctx.network, [input, 6])
-    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape))
+    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape) - implicit_batch_offset)
 
     layer = ctx.network.add_activation(
         input=input_a_trt, type=trt.ActivationType.RELU)

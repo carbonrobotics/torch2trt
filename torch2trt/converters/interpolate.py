@@ -66,10 +66,11 @@ def convert_interpolate_trt7(ctx):
 
     shape = size
     if shape != None:
+        shape_prefix = [input.size(1)] if ctx.network.has_implicit_batch_dimension else [input.size(0), input.size(1)]
         if isinstance(shape, collections.Sequence):
-           shape  = [input.size(0), input.size(1)] + list(shape)
+           shape  = shape_prefix + list(shape)
         else:
-            shape = [input.size(0), input.size(1)] + [shape] * input_dim
+            shape = shape_prefix + [shape] * input_dim
 
         layer.shape = shape
 

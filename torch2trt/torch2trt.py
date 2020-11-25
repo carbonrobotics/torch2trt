@@ -147,8 +147,7 @@ def add_missing_trt_tensors(network, tensors):
                     num_preceding_ones += 1
                 else:
                     break
-            shape = tuple(t.shape[0:])
-            print(f"shape: {shape}")
+            shape = tuple(t.shape[num_preceding_ones:])
             
             weight = t.detach().cpu().numpy()
             t._trt = network.add_constant(shape, weight).get_output(0)
@@ -389,6 +388,8 @@ class ConversionContext(object):
             hook.__exit__(type, val, tb)
 
     def add_inputs(self, torch_inputs, names=None):
+        implicit_batch_offset = 1 if self.network.has_implicit_batch_dimension else 0
+
         if names is None:
             names = default_input_names(len(torch_inputs))
         self.input_names = names
@@ -397,7 +398,7 @@ class ConversionContext(object):
             if not hasattr(torch_input, "_trt"):
                 trt_tensor = self.network.add_input(
                     name=names[i],
-                    shape=tuple(torch_input.shape),
+                    shape=tuple(torch_input.shape)[implicit_batch_offset:],
                     dtype=torch_dtype_to_trt(torch_input.dtype),
                 )
                 trt_tensor.location = torch_device_to_trt(torch_input.device)
@@ -460,6 +461,8 @@ class TRTModule(torch.nn.Module):
             idx = self.engine.get_binding_index(output_name)
             dtype = torch_dtype_from_trt(self.engine.get_binding_dtype(idx))
             shape = tuple(self.engine.get_binding_shape(idx))
+            if self.context.has_implicit_batch_dimension:
+                shape = (batch_size,) + shape
             device = torch_device_from_trt(self.engine.get_location(idx))
             output = torch.empty(size=shape, dtype=dtype, device=device)
             outputs[i] = output
@@ -498,7 +501,8 @@ def torch2trt(module,
               int8_calib_dataset=None,
               int8_calib_algorithm=DEFAULT_CALIBRATION_ALGORITHM,
               int8_calib_batch_size=1,
-              use_onnx=False):
+              use_onnx=False,
+              use_implicit_batch_dimension=True):
 
     inputs_in = inputs
 
@@ -534,7 +538,10 @@ def torch2trt(module,
         parser.parse(onnx_bytes)
         
     else:
-        network = builder.create_network(1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH))
+        flags = 0
+        if use_implicit_batch_dimension:
+            flags |= 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
+        network = builder.create_network(flags)
         with ConversionContext(network) as ctx:
 
             ctx.add_inputs(inputs, input_names)
@@ -549,7 +556,6 @@ def torch2trt(module,
     builder.fp16_mode = fp16_mode
     builder.max_batch_size = max_batch_size
     builder.strict_type_constraints = strict_type_constraints
-    builder.debug_sync = True
 
     if int8_mode:
 

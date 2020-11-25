@@ -7,16 +7,18 @@ def convert_permute(ctx):
     input = ctx.method_args[0]
     input_trt = add_missing_trt_tensors(ctx.network, [input])[0]
     output = ctx.method_return
+
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
     
     # permutation -1 because TRT does not include batch dim
     if isinstance(ctx.method_args[1], int):
-        permutation = tuple(ctx.method_args[0:])  # handle permute(a, b, c)
+        permutation = tuple(ctx.method_args[implicit_batch_offset:])  # handle permute(a, b, c)
     else:
         permutation = tuple(ctx.method_args[1])   # handle permute([a, b, c])
         
     assert(permutation[0] == 0)  # cannot move batch dim
     
-    trt_permutation = tuple([p for p in permutation])[0:]
+    trt_permutation = tuple([p - implicit_batch_offset for p in permutation])[implicit_batch_offset:]
     
     layer = ctx.network.add_shuffle(input_trt)
     layer.second_transpose = tuple(trt_permutation)

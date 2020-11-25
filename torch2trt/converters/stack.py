@@ -3,9 +3,11 @@ from torch2trt.module_test import add_module_test
 
 
 def unsqueeze(ctx, input, dim):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     layer = ctx.network.add_shuffle(trt_(ctx.network, input))
   
-    shape = input.shape[0:dim] + (1,) + input.shape[dim:]
+    shape = input.shape[implicit_batch_offset:dim] + (1,) + input.shape[dim:]
     layer.reshape_dims = tuple(shape)
 
     return layer.get_output(0)
@@ -13,6 +15,8 @@ def unsqueeze(ctx, input, dim):
 
 @tensorrt_converter('torch.stack', enabled=trt_version() >= '7.0')
 def convert_cat_trt7(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     inputs = get_arg(ctx, 'input', pos=0, default=None) 
     dim = get_arg(ctx, 'dim', pos=1, default=0) 
 
@@ -20,7 +24,7 @@ def convert_cat_trt7(ctx):
     trt_inputs = [unsqueeze(ctx, i, dim) for i in inputs]
 
     layer = ctx.network.add_concatenation(inputs=trt_inputs)
-    layer.axis = dim
+    layer.axis = dim - implicit_batch_offset
     output._trt = layer.get_output(0)
 
 class Stack(torch.nn.Module):

@@ -8,11 +8,13 @@ from torch2trt.module_test import add_module_test
 @tensorrt_converter('torch.Tensor.__truediv__') # py3
 @tensorrt_converter('torch.Tensor.__itruediv__') # py3
 def convert_div(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     input_a = ctx.method_args[0]
     input_b = ctx.method_args[1]
     output = ctx.method_return
     input_a_trt, input_b_trt = add_missing_trt_tensors(ctx.network, [input_a, input_b])
-    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape))
+    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape) - implicit_batch_offset)
     layer = ctx.network.add_elementwise(input_a_trt, input_b_trt, trt.ElementWiseOperation.DIV)
     output._trt = layer.get_output(0)
 
@@ -20,11 +22,13 @@ def convert_div(ctx):
 @tensorrt_converter('torch.Tensor.__rdiv__') # py2
 @tensorrt_converter('torch.Tensor.__rtruediv__') # py3
 def convert_rdiv(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     input_a = ctx.method_args[1]  # inputs switched for rdiv
     input_b = ctx.method_args[0]
     output = ctx.method_return
     input_a_trt, input_b_trt = add_missing_trt_tensors(ctx.network, [input_a, input_b])
-    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape))
+    input_a_trt, input_b_trt = broadcast_trt_tensors(ctx.network, [input_a_trt, input_b_trt], len(output.shape) - implicit_batch_offset)
     layer = ctx.network.add_elementwise(input_a_trt, input_b_trt, trt.ElementWiseOperation.DIV)
     output._trt = layer.get_output(0)
     

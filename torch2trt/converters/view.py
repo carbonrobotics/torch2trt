@@ -10,11 +10,13 @@ from torch2trt.module_test import add_module_test
 @tensorrt_converter('torch.squeeze')
 @tensorrt_converter('torch.unsqueeze')
 def convert_view(ctx):
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+
     input = ctx.method_args[0]
     input_trt = add_missing_trt_tensors(ctx.network, [input])[0]
     output = ctx.method_return
     layer = ctx.network.add_shuffle(input_trt)
-    layer.reshape_dims = tuple(output.shape[0:])
+    layer.reshape_dims = tuple(output.shape[implicit_batch_offset:])
     output._trt = layer.get_output(0)
 
 
