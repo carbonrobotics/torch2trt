@@ -459,7 +459,7 @@ class TRTModule(torch.nn.Module):
         for i, output_name in enumerate(self.output_names):
             idx = self.engine.get_binding_index(output_name)
             dtype = torch_dtype_from_trt(self.engine.get_binding_dtype(idx))
-            shape = (batch_size,) + tuple(self.engine.get_binding_shape(idx))
+            shape = tuple(self.engine.get_binding_shape(idx))
             device = torch_device_from_trt(self.engine.get_location(idx))
             output = torch.empty(size=shape, dtype=dtype, device=device)
             outputs[i] = output
