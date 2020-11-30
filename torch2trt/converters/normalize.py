@@ -20,7 +20,7 @@ def convert_normalize(ctx):
     # compute norm = sum(abs(x)**p, dim=dim)**(1./p)
     norm = ctx.network.add_unary(input_trt, trt.UnaryOperation.ABS).get_output(0)
     norm = ctx.network.add_elementwise(norm, p_trt, trt.ElementWiseOperation.POW).get_output(0)
-    norm = ctx.network.add_reduce(norm, trt.ReduceOperation.SUM, torch_dim_to_trt_axes(dim), keep_dims=True).get_output(0)
+    norm = ctx.network.add_reduce(norm, trt.ReduceOperation.SUM, torch_dim_to_trt_axes(dim, ctx.network.has_implicit_batch_dimension), keep_dims=True).get_output(0)
     norm = ctx.network.add_elementwise(norm, p_inv_trt, trt.ElementWiseOperation.POW).get_output(0)
     
     # clamp norm = max(norm, eps)

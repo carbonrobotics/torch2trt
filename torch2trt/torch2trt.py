@@ -83,22 +83,28 @@ def trt_num_outputs(engine):
     return count
 
 
-def torch_dim_to_trt_axes(dim):
+def torch_dim_to_trt_axes(dim, remove_batch_dimension):
     """Converts torch dim, or tuple of dims to a tensorrt axes bitmask"""
     if not isinstance(dim, tuple):
         dim = (dim,)
 
+    offset = 1 if remove_batch_dimension else 0
+
     # create axes bitmask for reduce layer
     axes = 0
     for d in dim:
-        axes |= 1 << (d)  # 
+        axes |= 1 << (d - offset)  # 
 
     return axes
 
 
 def add_trt_constant(network, tensor):
-    shape = tuple(tensor.shape)
-    array = tensor.detach().cpu().numpy()
+    if network.has_implicit_batch_dimension:
+        shape = tuple(tensor.shape[1:])
+        array = tensor[0].detach().cpu().numpy()
+    else:
+        shape = tuple(tensor.shape)
+        array = tensor.detach().cpu().numpy()
     layer = network.add_constant(shape, array)
     return layer.get_output(0)
 
@@ -418,7 +424,7 @@ class ConversionContext(object):
 
 
 class TRTModule(torch.nn.Module):
-    def __init__(self, engine=None, input_names=None, output_names=None):
+    def __init__(self, engine=None, input_names=None, output_names=None, implicit_batch_dimension=True):
         super(TRTModule, self).__init__()
         self._register_state_dict_hook(TRTModule._on_state_dict)
         self.engine = engine
@@ -426,11 +432,13 @@ class TRTModule(torch.nn.Module):
             self.context = self.engine.create_execution_context()
         self.input_names = input_names
         self.output_names = output_names
+        self.implicit_batch_dimension = implicit_batch_dimension
 
     def _on_state_dict(self, state_dict, prefix, local_metadata):
         state_dict[prefix + "engine"] = bytearray(self.engine.serialize())
         state_dict[prefix + "input_names"] = self.input_names
         state_dict[prefix + "output_names"] = self.output_names
+        state_dict[prefix + "implicit_batch_dimension"] = self.implicit_batch_dimension
 
     def _load_from_state_dict(
         self,
@@ -450,6 +458,11 @@ class TRTModule(torch.nn.Module):
 
         self.input_names = state_dict[prefix + "input_names"]
         self.output_names = state_dict[prefix + "output_names"]
+        if prefix + "implicit_batch_dimension" in state_dict:
+            self.implicit_batch_dimension = state_dict[prefix + "implicit_batch_dimension"]
+        else:
+            # For models already converted without implicit batch dimensions flag in state dict
+            self.implicit_batch_dimension = True
 
     def forward(self, *inputs):
         batch_size = inputs[0].shape[0]
@@ -461,7 +474,7 @@ class TRTModule(torch.nn.Module):
             idx = self.engine.get_binding_index(output_name)
             dtype = torch_dtype_from_trt(self.engine.get_binding_dtype(idx))
             shape = tuple(self.engine.get_binding_shape(idx))
-            if self.context.has_implicit_batch_dimension:
+            if self.implicit_batch_dimension:
                 shape = (batch_size,) + shape
             device = torch_device_from_trt(self.engine.get_location(idx))
             output = torch.empty(size=shape, dtype=dtype, device=device)
@@ -539,7 +552,7 @@ def torch2trt(module,
         
     else:
         flags = 0
-        if use_implicit_batch_dimension:
+        if not use_implicit_batch_dimension:
             flags |= 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
         network = builder.create_network(flags)
         with ConversionContext(network) as ctx:
@@ -557,6 +570,8 @@ def torch2trt(module,
     builder.max_batch_size = max_batch_size
     builder.strict_type_constraints = strict_type_constraints
 
+    # TODO(evanbro) Add optimization profiles to support batch sizes other than one in explicit batch dimension mode
+
     if int8_mode:
 
         # default to use input tensors for calibration
@@ -572,7 +587,7 @@ def torch2trt(module,
 
     engine = builder.build_cuda_engine(network)
 
-    module_trt = TRTModule(engine, input_names, output_names)
+    module_trt = TRTModule(engine, input_names, output_names, use_implicit_batch_dimension)
 
     if keep_network:
         module_trt.network = network

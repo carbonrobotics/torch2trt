@@ -25,8 +25,8 @@ def convert_BatchNorm2d(ctx):
 
     # reshape back to 1D
     layer = ctx.network.add_shuffle(layer.get_output(0))
-    start_dim = 1 if ctx.network.has_implicit_batch_dimension else 0
-    layer.reshape_dims = tuple(output.shape[start_dim:])
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+    layer.reshape_dims = tuple(output.shape[implicit_batch_offset:])
     
     output._trt = layer.get_output(0)
 

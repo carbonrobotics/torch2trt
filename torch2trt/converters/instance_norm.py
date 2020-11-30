@@ -12,11 +12,15 @@ def _add_scale_1d2d3d(network, x_trt, mode, offset, scale, power):
         layer = network.add_shuffle(y_trt)
         layer.reshape_dims = (x_trt.shape[0], x_trt.shape[1], -1)  # NCH -> NCHW
         y_trt = layer.get_output(0)
+    elif not network.has_implicit_batch_dimension and ndim != 4:
+        layer = network.add_shuffle(y_trt)
+        layer.reshape_dims = (x_trt.shape[0], x_trt.shape[1], x_trt.shape[2], -1)
+        y_trt = layer.get_output(0)
         
     y_trt = network.add_scale(y_trt, mode, offset, scale, power).get_output(0)
 
     # shape to original dimension
-    if network.has_implicit_batch_dimension and ndim != 3:    
+    if (network.has_implicit_batch_dimension and ndim != 3) or (not network.has_implicit_batch_dimension and ndim != 4):    
         layer = network.add_shuffle(layer.get_output(0))
         layer.reshape_dims = tuple(x_trt.shape)
         y_trt = layer.get_output(0)
@@ -58,7 +62,7 @@ def convert_instance_norm(ctx):
         
         eps_np = np.array([eps], dtype=np.float32)
         keep_dims = True
-        reduce_axes = torch_dim_to_trt_axes(tuple(range(2, len(input.shape))))
+        reduce_axes = torch_dim_to_trt_axes(tuple(range(2, len(input.shape))), ctx.network.has_implicit_batch_dimension)
         
         # compute mean over spatial
         mean_trt = ctx.network.add_reduce(input._trt, trt.ReduceOperation.AVG, reduce_axes, keep_dims).get_output(0)

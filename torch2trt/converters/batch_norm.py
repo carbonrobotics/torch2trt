@@ -1,6 +1,5 @@
 from torch2trt.torch2trt import *
 from torch2trt.module_test import add_module_test
-import pdb
 
 @tensorrt_converter('torch.nn.functional.batch_norm', enabled=trt_version() >= '7.0')
 def convert_batch_norm_trt7(ctx):

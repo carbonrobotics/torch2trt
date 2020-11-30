@@ -55,8 +55,8 @@ def convert_tensor_getitem(ctx):
         new_slices.append(slice(None, None, None))
             
     # Step 2 - Remove batch from slices if implicit batch (TRT from this point)
-    dims_start = 1 if ctx.network.has_implicit_batch_dimension else 0
-    slices = tuple(new_slices[dims_start:])
+    implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+    slices = tuple(new_slices[implicit_batch_offset:])
     
     
     # Step 3 - Add slice layer (will currently ignore 'None' slices)
@@ -93,8 +93,8 @@ def convert_tensor_getitem(ctx):
     num_non_slice = len([s for s in slices if not isinstance(s, slice)])
     if num_non_slice > 0:
         layer = ctx.network.add_shuffle(output_trt)
-        dims_start = 1 if ctx.network.has_implicit_batch_dimension else 0
-        layer.reshape_dims = tuple(output.shape[dims_start:]) 
+        implicit_batch_offset = 1 if ctx.network.has_implicit_batch_dimension else 0
+        layer.reshape_dims = tuple(output.shape[implicit_batch_offset:]) 
         output_trt = layer.get_output(0)
         
     output._trt = output_trt

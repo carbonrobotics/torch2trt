@@ -26,7 +26,7 @@ def convert_mean(ctx):
     # create axes bitmask for reduce layer
     axes = 0
     for d in dim:
-        axes |= 1 << (d - implicit_batch_offset) #
+        axes |= 1 << (d - implicit_batch_offset)
         
     # get whether to keep dimensions
     if 'keepdim' in ctx.method_kwargs:
