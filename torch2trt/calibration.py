@@ -1,5 +1,6 @@
 import torch
 import tensorrt as trt
+import os
 
 
 if trt.__version__ >= '5.1':
@@ -22,7 +23,8 @@ class TensorBatchDataset():
     
 class DatasetCalibrator(trt.IInt8Calibrator):
     
-    def __init__(self, inputs, dataset, batch_size=1, algorithm=DEFAULT_CALIBRATION_ALGORITHM):
+    def __init__(self, inputs, dataset, batch_size=1, algorithm=DEFAULT_CALIBRATION_ALGORITHM,
+                 calibration_input_path: str = None, calibration_output_path: str = None):
         super(DatasetCalibrator, self).__init__()
         
         self.dataset = dataset
@@ -63,7 +65,11 @@ class DatasetCalibrator(trt.IInt8Calibrator):
         return self.batch_size
     
     def read_calibration_cache(self, *args, **kwargs):
-        return None
-    
+        if self.cache_input_path is not None and os.path.exists(self.cache_input_path):
+            with open(self.cache_file, "rb") as f:
+                return f.read()
+
     def write_calibration_cache(self, cache, *args, **kwargs):
-        pass
+        if self.cache_input_path is not None:
+            with open(self.cache_file, "wb") as f:
+                f.write(cache)
