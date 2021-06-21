@@ -68,10 +68,10 @@ class DatasetCalibrator(trt.IInt8Calibrator):
     
     def read_calibration_cache(self, *args, **kwargs):
         if self.cache_input_path is not None and os.path.exists(self.cache_input_path):
-            with open(self.cache_file, "rb") as f:
+            with open(self.cache_input_path, "rb") as f:
                 return f.read()
 
     def write_calibration_cache(self, cache, *args, **kwargs):
-        if self.cache_input_path is not None:
-            with open(self.cache_file, "wb") as f:
+        if self.cache_output_path is not None:
+            with open(self.cache_output_path, "wb") as f:
                 f.write(cache)
