@@ -24,12 +24,14 @@ class TensorBatchDataset():
 class DatasetCalibrator(trt.IInt8Calibrator):
     
     def __init__(self, inputs, dataset, batch_size=1, algorithm=DEFAULT_CALIBRATION_ALGORITHM,
-                 calibration_input_path: str = None, calibration_output_path: str = None):
+                 cache_input_path: str = None, cache_output_path: str = None):
         super(DatasetCalibrator, self).__init__()
         
         self.dataset = dataset
         self.batch_size = batch_size
         self.algorithm = algorithm
+        self.cache_input_path = cache_input_path
+        self.cache_output_path = cache_output_path
         
         # create buffers that will hold data batches
         self.buffers = []
