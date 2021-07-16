@@ -522,7 +522,10 @@ def torch2trt(module,
     inputs_in = inputs
 
     # copy inputs to avoid modifications to source data
-    inputs = [tensor.clone()[0:1] for tensor in inputs]  # only run single entry
+    if use_implicit_batch_dimension:
+       inputs = [tensor.clone()[0:1] for tensor in inputs]  # only run single entry
+    else:
+        inputs = [tensor.clone() for tensor in inputs]
 
     logger = trt.Logger(log_level)
     builder = trt.Builder(logger)
