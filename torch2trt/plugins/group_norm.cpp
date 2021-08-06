@@ -136,7 +136,7 @@ public:
     }
 
     bool supportsFormat(DataType type, PluginFormat format) const noexcept override {
-      if (format != PluginFormat::kNCHW) {
+      if (format != PluginFormat::kLINEAR) {
         return false;
       }
       if (type == DataType::kINT32 || type == DataType::kINT8) {
