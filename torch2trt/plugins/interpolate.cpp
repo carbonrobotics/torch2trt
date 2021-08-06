@@ -180,7 +180,7 @@ public:
 
   size_t getWorkspaceSize(int maxBatchSize) const noexcept override { return 0; }
 
-  int32_t enqueue(int32_t batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream) override {
+  int32_t enqueue(int32_t batchSize, void const* const* inputs, void* const* outputs, void* workspace, cudaStream_t stream) override {
     // get input / output dimensions
     std::vector<long> batch_input_sizes = input_sizes;
     std::vector<long> batch_output_sizes = output_sizes;
