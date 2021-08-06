@@ -112,19 +112,19 @@ public:
         return data_str.str();
     }
     
-    const char* getPluginType() const override {
+    const char* getPluginType() const override noexcept {
       return "group_norm";
     };
 
-    const char* getPluginVersion() const override {
+    const char* getPluginVersion() const override noexcept {
       return "1";
     }
 
-    int getNbOutputs() const override {
+    int getNbOutputs() const override noexcept {
       return 1;
     } 
 
-    Dims getOutputDimensions(int index, const Dims* inputs, int nbInputDims) override {
+    Dims getOutputDimensions(int index, const Dims* inputs, int nbInputDims) override noexcept {
       Dims dims;
       dims.nbDims = inputs->nbDims;
   
@@ -135,7 +135,7 @@ public:
       return dims;
     }
 
-    bool supportsFormat(DataType type, PluginFormat format) const override {
+    bool supportsFormat(DataType type, PluginFormat format) const override noexcept {
       if (format != PluginFormat::kNCHW) {
         return false;
       }
@@ -146,7 +146,7 @@ public:
     }
 
   void configureWithFormat(const Dims* inputDims, int nbInputs, const Dims* outputDims,
-      int nbOutputs, DataType type, PluginFormat format, int maxBatchSize) override {
+      int nbOutputs, DataType type, PluginFormat format, int maxBatchSize) override noexcept {
     
     // set data type
     if (type == DataType::kFLOAT) {
@@ -170,7 +170,7 @@ public:
     }
   }
 
-  int initialize() override {
+  int initialize() override noexcept {
     // set device
     tensor_options = tensor_options.device(c10::kCUDA);
       
@@ -188,11 +188,11 @@ public:
     return 0;
   }
 
-  void terminate() override {}
+  void terminate() override noexcept {}
 
-  size_t getWorkspaceSize(int maxBatchSize) const override { return 0; }
+  size_t getWorkspaceSize(int maxBatchSize) const override noexcept { return 0; }
 
-  int enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream) override {
+  int enqueue(int batchSize, const void* const* inputs, void** outputs, void* workspace, cudaStream_t stream) override noexcept {
     // get input / output dimensions
     std::vector<long> batch_input_sizes = input_sizes;
     std::vector<long> batch_output_sizes = output_sizes;
@@ -235,25 +235,25 @@ public:
   }
 
 
-  size_t getSerializationSize() const override {
+  size_t getSerializationSize() const override noexcept {
     return serializeToString().size();
   }
     
-  void serialize(void* buffer) const override {
+  void serialize(void* buffer) const override noexcept {
       std::string data = serializeToString();
       size_t size = getSerializationSize();
       data.copy((char *) buffer, size);
   }
 
-  void destroy() override {}
+  void destroy() override noexcept {}
 
-  IPluginV2* clone() const override {
+  IPluginV2* clone() const override noexcept {
     return new GroupNormPlugin(num_groups, weight, bias, eps); 
   }
 
-  void setPluginNamespace(const char* pluginNamespace) override {}
+  void setPluginNamespace(const char* pluginNamespace) override noexcept {}
 
-  const char *getPluginNamespace() const override {
+  const char *getPluginNamespace() const override noexcept {
     return "torch2trt";
   }
 
@@ -263,26 +263,26 @@ class GroupNormPluginCreator : public IPluginCreator {
 public:
   GroupNormPluginCreator() {}
 
-  const char *getPluginNamespace() const override {
+  const char *getPluginNamespace() const override noexcept {
     return "torch2trt";
   }
 
-  const char *getPluginName() const override {
+  const char *getPluginName() const override noexcept {
     return "group_norm";
   }
 
-  const char *getPluginVersion() const override {
+  const char *getPluginVersion() const override noexcept {
     return "1";
   }
 
-  IPluginV2 *deserializePlugin(const char *name, const void *data, size_t length) override {
+  IPluginV2 *deserializePlugin(const char *name, const void *data, size_t length) override noexcept {
     return new GroupNormPlugin((const char*) data, length);
   }
 
-  void setPluginNamespace(const char *N) override {}
-  const PluginFieldCollection *getFieldNames() override { return nullptr; }
+  void setPluginNamespace(const char *N) override noexcept {}
+  const PluginFieldCollection *getFieldNames() override noexcept { return nullptr; }
 
-  IPluginV2 *createPlugin(const char *name, const PluginFieldCollection *fc) override { return nullptr; }
+  IPluginV2 *createPlugin(const char *name, const PluginFieldCollection *fc) override noexcept { return nullptr; }
 
 };
 
