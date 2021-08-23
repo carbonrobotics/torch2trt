@@ -289,7 +289,9 @@ def attach_converter(ctx, method, converter, method_str):
 
             # print where the function was called in our code
             stack = traceback.extract_stack()
-            print(f">>> {ctx.method_str}() {[f for f in stack if 'deeplearning' in f.filename][-1]}")
+            filtered_stack = [f for f in stack if 'deeplearning' in f.filename]
+            if len(filtered_stack) > 0:
+                print(f">>> {ctx.method_str}() {filtered_stack[-1]}")
 
             #             print('%s' % (converter.__name__,))
             converter["converter"](ctx)
@@ -570,10 +572,14 @@ def torch2trt(module,
                 outputs = (outputs,)
             ctx.mark_outputs(outputs, output_names)
 
-    builder.max_workspace_size = max_workspace_size
-    builder.fp16_mode = fp16_mode
+    config = builder.create_builder_config()
+
+    config.max_workspace_size = max_workspace_size
+    if fp16_mode:
+        config.flags |= 1 << int(trt.BuilderFlag.FP16)
     builder.max_batch_size = max_batch_size
-    builder.strict_type_constraints = strict_type_constraints
+    if strict_type_constraints:
+        config.flags |= 1 << int(trt.BuilderFlag.STRICT_TYPES)
 
     # TODO(evanbro) Add optimization profiles to support batch sizes other than one in explicit batch dimension mode
 
@@ -591,7 +597,7 @@ def torch2trt(module,
             cache_input_path=int8_calib_cache_input_path, cache_output_path=int8_calib_cache_output_path
         )
 
-    engine = builder.build_cuda_engine(network)
+    engine = builder.build_engine(network, config)
 
     module_trt = TRTModule(engine, input_names, output_names, use_implicit_batch_dimension)
 

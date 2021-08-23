@@ -86,8 +86,8 @@ def convert_interpolate_trt7(ctx):
     else:
         layer.resize_mode=trt.ResizeMode.NEAREST
 
-    if align_corners != None:
-        layer.align_corners = align_corners
+    if align_corners != None and align_corners:
+        layer.coordinate_transformation = trt.ResizeCoordinateTransformation.ALIGN_CORNERS
 
     output._trt = layer.get_output(0)
 
