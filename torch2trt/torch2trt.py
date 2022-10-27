@@ -519,7 +519,8 @@ def torch2trt(module,
               int8_calib_cache_input_path=None,
               int8_calib_cache_output_path=None,
               use_onnx=False,
-              use_implicit_batch_dimension=True):
+              use_implicit_batch_dimension=True,
+              network_modifier=None):
 
     inputs_in = inputs
 
@@ -571,6 +572,9 @@ def torch2trt(module,
             if not isinstance(outputs, tuple) and not isinstance(outputs, list):
                 outputs = (outputs,)
             ctx.mark_outputs(outputs, output_names)
+
+    if network_modifier is not None:
+        network_modifier(network)
 
     config = builder.create_builder_config()
 
