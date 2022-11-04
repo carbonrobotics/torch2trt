@@ -28,7 +28,7 @@ for method in TORCH_METHODS:
     
     @tensorrt_converter(method, is_real=False)
     def warn_method(ctx):
-        print('Warning: Encountered known unsupported method %s' % ctx.method_str)
+        raise RuntimeError('Encountered known unsupported method %s' % ctx.method_str)
         
 
 @tensorrt_converter('torch.Tensor.dim', is_real=False)

@@ -2,6 +2,7 @@ from torch2trt.torch2trt import *
 from torch2trt.module_test import add_module_test
 
 
+@tensorrt_converter("torch.Tensor.transpose", enabled=trt_version() < '7.0')
 @tensorrt_converter("torch.transpose", enabled=trt_version() < '7.0')
 def convert_transpose(ctx):
     input = ctx.method_args[0]
@@ -18,6 +19,7 @@ def convert_transpose(ctx):
     output._trt = layer.get_output(0)
 
 
+@tensorrt_converter('torch.Tensor.transpose', enabled=trt_version() >= '7.0')
 @tensorrt_converter('torch.transpose', enabled=trt_version() >= '7.0')
 def convert_transpose_trt7(ctx):
     input = ctx.method_args[0]
