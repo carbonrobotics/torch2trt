@@ -1,10 +1,11 @@
 import traceback
 import torch
 import tensorrt as trt
-from copy import copy
+import copy
 import numpy as np
 import io
 from collections import defaultdict
+import importlib
 
 from .calibration import (
     TensorBatchDataset,
@@ -17,6 +18,10 @@ from .calibration import (
 
 def trt_version():
     return trt.__version__
+
+
+def torch_version():
+    return torch.__version__
 
 
 def torch_dtype_to_trt(dtype):
@@ -81,6 +86,17 @@ def trt_num_outputs(engine):
         if not engine.binding_is_input(i):
             count += 1
     return count
+
+
+def torch_dim_resolve_negative(dim, ndim):
+    if not isinstance(dim, tuple):
+        dim = (dim,)
+    pos = []
+    for d in dim:
+        if d < 0:
+            d = ndim + d
+        pos.append(d)
+    return tuple(pos)
 
 
 def torch_dim_to_trt_axes(dim, remove_batch_dimension):
@@ -310,30 +326,24 @@ def attach_converter(ctx, method, converter, method_str):
 class ConversionHook(object):
     """Attaches TensorRT converter to PyTorch method call"""
 
-    def __init__(self, ctx, method, converter):
+    def __init__(self, ctx, key, converter):
         self.ctx = ctx
-        self.method_str = method
+        self.key = key
         self.converter = converter
 
     def _set_method(self, method):
-        exec("%s = method" % self.method_str)
+        module = self.converter['module']
+        exec('module.%s = method' % self.converter['qual_name'])
 
     def __enter__(self):
-        try:
-            self.method_impl = eval(self.method_str)
-        except AttributeError:
-            self.method_impl = None
-
-        if self.method_impl:
-            self._set_method(
-                attach_converter(
-                    self.ctx, self.method_impl, self.converter, self.method_str
-                )
+        self._set_method(
+            attach_converter(
+                self.ctx, self.converter['method_impl'], self.converter, self.converter['method_str']
             )
+        )
 
     def __exit__(self, type, val, tb):
-        if self.method_impl:
-            self._set_method(self.method_impl)
+        self._set_method(self.converter['method_impl'])
 
 def default_input_names(num_inputs):
     return ["input_%d" % i for i in range(num_inputs)]
@@ -375,15 +385,17 @@ class LayerNamingNetworkWrapper(object):
 
 
 class ConversionContext(object):
-    def __init__(self, network, converters=CONVERTERS):
+    
+    def __init__(self, network, converters=CONVERTERS, torch2trt_kwargs=None):
         self.network = LayerNamingNetworkWrapper(self, network)
         self.lock = False
         self.method_args = None
         self.method_kwargs = None
         self.method_return = None
+        self.torch2trt_kwargs = torch2trt_kwargs
         self.hooks = [
-            ConversionHook(self, method, converter)
-            for method, converter in converters.items()
+            ConversionHook(self, key, converter)
+            for key, converter in converters.items()
         ]
 
     def __enter__(self):
@@ -519,7 +531,12 @@ def torch2trt(module,
               int8_calib_cache_input_path=None,
               int8_calib_cache_output_path=None,
               use_onnx=False,
-              use_implicit_batch_dimension=True):
+              use_implicit_batch_dimension=True,
+              **kwargs):
+    
+    # capture arguments to provide to context
+    kwargs.update(locals())
+    kwargs.pop('kwargs')
 
     inputs_in = inputs
 
@@ -562,7 +579,7 @@ def torch2trt(module,
         if not use_implicit_batch_dimension:
             flags |= 1 << int(trt.NetworkDefinitionCreationFlag.EXPLICIT_BATCH)
         network = builder.create_network(flags)
-        with ConversionContext(network) as ctx:
+        with ConversionContext(network, torch2trt_kwargs=kwargs) as ctx:
 
             ctx.add_inputs(inputs, input_names)
 
@@ -609,11 +626,43 @@ def torch2trt(module,
 
 # DEFINE ALL CONVERSION FUNCTIONS
 
+def get_module_qualname(name):
+    s = name.split('.')
+    
+    for i in range(len(s)):
+        idx = len(s) - i - 1
+        modulename, qualname = ".".join(s[:idx]), ".".join(s[idx:])
+        try:
+            module = importlib.import_module(modulename)
+            return module, modulename, qualname
+        except:
+            pass
+        
+    raise RuntimeError("Could not import module")
+    
 
-def tensorrt_converter(method, is_real=True, enabled=True):
-
+def tensorrt_converter(method, is_real=True, enabled=True, imports=[]):
+    
+    if isinstance(method, str):
+        module, module_name, qual_name = get_module_qualname(method)
+    else:
+        module, module_name, qual_name = importlib.import_module(method.__module__), method.__module__, method.__qualname__
+        
+    try:
+        method_impl = eval('copy.deepcopy(module.%s)' % qual_name)
+    except:
+        enabled = False
+    
     def register_converter(converter):
-        CONVERTERS[method] = {"converter": converter, "is_real": is_real}
+        CONVERTERS[method] = {
+            "converter": converter, 
+            "is_real": is_real, 
+            "module": module,
+            "module_name": module_name,
+            "qual_name": qual_name,
+            "method_str": module_name + '.' + qual_name,
+            "method_impl": method_impl
+        }
         return converter
 
     def pass_converter(converter):
