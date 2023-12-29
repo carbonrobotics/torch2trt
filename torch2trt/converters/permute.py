@@ -12,11 +12,12 @@ def convert_permute(ctx):
     
     # permutation -1 because TRT does not include batch dim
     if isinstance(ctx.method_args[1], int):
-        permutation = tuple(ctx.method_args[implicit_batch_offset:])  # handle permute(a, b, c)
+        permutation = tuple(ctx.method_args[1:])  # handle permute(a, b, c)
     else:
         permutation = tuple(ctx.method_args[1])   # handle permute([a, b, c])
-        
-    assert(permutation[0] == 0)  # cannot move batch dim
+    
+    if ctx.network.has_implicit_batch_dimension:
+        assert(permutation[0] == 0)  # cannot move batch dim
     
     trt_permutation = tuple([p - implicit_batch_offset for p in permutation])[implicit_batch_offset:]
     
