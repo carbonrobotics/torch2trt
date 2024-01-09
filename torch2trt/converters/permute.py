@@ -12,7 +12,7 @@ def convert_permute(ctx):
     
     # permutation -1 because TRT does not include batch dim
     if isinstance(ctx.method_args[1], int):
-        permutation = tuple(ctx.method_args[implicit_batch_offset:])  # handle permute(a, b, c)
+        permutation = tuple(ctx.method_args[1:])  # handle permute(a, b, c)
     else:
         permutation = tuple(ctx.method_args[1])   # handle permute([a, b, c])
     
