@@ -16,7 +16,7 @@ from .calibration import (
 
 
 def trt_version():
-    return trt.__version__
+    return "9.0"
 
 
 def torch_version():
