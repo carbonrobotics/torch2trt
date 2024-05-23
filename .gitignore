@@ -17,3 +17,6 @@ __pycache__/
 *.pth
 docs/converters.md
 site
+ToJetsonGrp
+.vscode
+data
