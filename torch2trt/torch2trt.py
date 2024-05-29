@@ -73,7 +73,7 @@ def torch_dim_to_trt_axes(dim):
 
 def add_trt_constant(network, tensor):
     shape = tuple(tensor.shape)
-    array = tensor[0].detach().cpu().numpy()
+    array = tensor.detach().cpu().numpy()
     layer = network.add_constant(shape, array)
     return layer.get_output(0)
 
@@ -125,11 +125,8 @@ def add_missing_trt_tensors(network, tensors):
                         break
                 shape = tuple(t.shape[num_preceding_ones:])
 
-                weight = t.detach().cpu().numpy()
-                t._trt = network.add_constant(shape, weight).get_output(0)
-
-                # weight = t.detach().cpu().contiguous().numpy()
-                # t._trt = network.add_constant(shape, trt.Weights(weight)).get_output(0)
+                weight = t.detach().cpu().contiguous().numpy()
+                t._trt = network.add_constant(shape, trt.Weights(weight)).get_output(0)
                 trt_tensor = t._trt
 
 
@@ -514,11 +511,10 @@ class ConversionContext(object):
 
         for i, torch_output in enumerate(torch_outputs):
             trt_tensor = torch_output._trt
+            self.network.mark_output(trt_tensor)
             trt_tensor.name = names[i]
             trt_tensor.location = torch_device_to_trt(torch_output.device)
             trt_tensor.dtype = torch_dtype_to_trt(torch_output.dtype)
-            self.network.mark_output(trt_tensor)
-
 
 
 

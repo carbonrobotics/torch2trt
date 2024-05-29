@@ -2,6 +2,7 @@ import torch
 import tensorrt as trt
 import os
 from .flattener import Flattener
+from .version_utils import trt_version
 
 __all__ = [
     'DEFAULT_CALIBRATION_ALGORITHM',
@@ -9,7 +10,7 @@ __all__ = [
 ]
 
 
-if trt.__version__ >= '5.1':
+if trt_version() >= '5.1':
     DEFAULT_CALIBRATION_ALGORITHM = trt.CalibrationAlgoType.ENTROPY_CALIBRATION_2
 else:
     DEFAULT_CALIBRATION_ALGORITHM = trt.CalibrationAlgoType.ENTROPY_CALIBRATION
@@ -27,17 +28,18 @@ class DatasetCalibrator(trt.IInt8Calibrator):
             flattener = Flattener.from_value(dataset[0])
         self.flattener = flattener
         self.batch_size = batch_size
+        self.tensors = []
 
     def get_batch(self, *args, **kwargs):
         if self.count < len(self.dataset):
-            tensors = []
+            self.tensors = []
             for _ in range(self.get_batch_size()):
                 datapoint = self.flattener.flatten(self.dataset[self.count])
                 for j in range(len(datapoint)):
-                    if len(tensors) <= j:
-                        tensors.append([datapoint[j]])
-            tensors = [torch.cat(tensor_list, dim=0) for tensor_list in tensors]
-            bindings = [int(t.data_ptr()) for t in tensors]
+                    if len(self.tensors) <= j:
+                        self.tensors.append([datapoint[j]])
+            self.tensors = [torch.cat(tensor_list, dim=0) for tensor_list in self.tensors]
+            bindings = [int(t.data_ptr()) for t in self.tensors]
             self.count += 1
             return bindings
         else:
