@@ -1572,8 +1572,10 @@ def convert_pad(ctx):
     post_padding = (pad[3], pad[1])
     
     # mode / value are ignored since not supported by TensorRT
-    
-    layer = ctx.network.add_padding(input_trt, pre_padding, post_padding)
+    if trt_version() < "10.0":
+        layer = ctx.network.add_padding(input_trt, pre_padding, post_padding)
+    else:
+        layer = ctx.network.add_padding_nd(input_trt, pre_padding, post_padding)
     output._trt = layer.get_output(0)
     
 

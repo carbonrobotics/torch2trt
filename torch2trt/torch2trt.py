@@ -127,6 +127,9 @@ def add_missing_trt_tensors(network, tensors):
 
                 weight = t.detach().cpu().numpy()
                 t._trt = network.add_constant(shape, weight).get_output(0)
+
+                # weight = t.detach().cpu().contiguous().numpy()
+                # t._trt = network.add_constant(shape, trt.Weights(weight)).get_output(0)
                 trt_tensor = t._trt
 
 
@@ -143,7 +146,7 @@ def broadcast_trt_tensors(network, trt_tensors, broadcast_ndim):
         broadcasted_trt_tensors = [None] * len(trt_tensors)
 
         for i, t in enumerate(trt_tensors):
-
+            print(t.shape)
             if len(t.shape) < broadcast_ndim:
                 # append 1 size dims to front
                 diff = broadcast_ndim - len(t.shape)
