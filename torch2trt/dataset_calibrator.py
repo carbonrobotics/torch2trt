@@ -17,7 +17,7 @@ else:
 
 class DatasetCalibrator(trt.IInt8Calibrator):
 
-    def __init__(self, dataset, algorithm=DEFAULT_CALIBRATION_ALGORITHM, cache_file=None, flattener=None):
+    def __init__(self, dataset, algorithm=DEFAULT_CALIBRATION_ALGORITHM, batch_size=1, cache_file=None, flattener=None):
         super(DatasetCalibrator, self).__init__()
         self.dataset = dataset
         self.algorithm = algorithm
@@ -26,10 +26,17 @@ class DatasetCalibrator(trt.IInt8Calibrator):
         if flattener is None:
             flattener = Flattener.from_value(dataset[0])
         self.flattener = flattener
+        self.batch_size = batch_size
 
     def get_batch(self, *args, **kwargs):
         if self.count < len(self.dataset):
-            tensors = self.flattener.flatten(self.dataset[self.count])
+            tensors = []
+            for _ in range(self.get_batch_size()):
+                datapoint = self.flattener.flatten(self.dataset[self.count])
+                for j in range(len(datapoint)):
+                    if len(tensors) <= j:
+                        tensors.append([datapoint[j]])
+            tensors = [torch.cat(tensor_list, dim=0) for tensor_list in tensors]
             bindings = [int(t.data_ptr()) for t in tensors]
             self.count += 1
             return bindings
@@ -40,7 +47,7 @@ class DatasetCalibrator(trt.IInt8Calibrator):
         return self.algorithm
 
     def get_batch_size(self):
-        return 1
+        return self.batch_size
 
     def read_calibration_cache(self, *args, **kwargs):
         if (self.cache_file is not None) and os.path.exists(self.cache_file):
