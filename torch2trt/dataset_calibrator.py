@@ -38,6 +38,8 @@ class DatasetCalibrator(trt.IInt8Calibrator):
                 for j in range(len(datapoint)):
                     if len(self.tensors) <= j:
                         self.tensors.append([datapoint[j]])
+                    else:
+                        self.tensors[j].append(datapoint[j])
             self.tensors = [torch.cat(tensor_list, dim=0) for tensor_list in self.tensors]
             bindings = [int(t.data_ptr()) for t in self.tensors]
             self.count += 1

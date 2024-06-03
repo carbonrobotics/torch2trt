@@ -62,7 +62,7 @@ class TRTModule(torch.nn.Module):
         state_dict[prefix + "output_names"] = self.output_names
         state_dict[prefix + "input_flattener"] = self.input_flattener.dict()
         state_dict[prefix + "output_flattener"] = self.output_flattener.dict()
-        state_dict[prefix + "version"] = trt_version()
+        state_dict[prefix + "version"] = str(trt_version())
 
     def _load_from_state_dict(
         self,
