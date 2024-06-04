@@ -724,43 +724,10 @@ def torch2trt(module,
 
 # DEFINE ALL CONVERSION FUNCTIONS
 
-def get_module_qualname(name):
-    s = name.split('.')
-
-    for i in range(len(s)):
-        idx = len(s) - i - 1
-        modulename, qualname = ".".join(s[:idx]), ".".join(s[idx:])
-        try:
-            module = importlib.import_module(modulename)
-            return module, modulename, qualname
-        except:
-            pass
-
-    raise RuntimeError("Could not import module")
-
-
-def tensorrt_converter(method, is_real=True, enabled=True, imports=[]):
-
-    if isinstance(method, str):
-        module, module_name, qual_name = get_module_qualname(method)
-    else:
-        module, module_name, qual_name = importlib.import_module(method.__module__), method.__module__, method.__qualname__
-
-    try:
-        method_impl = eval('copy.deepcopy(module.%s)' % qual_name)
-    except:
-        enabled = False
+def tensorrt_converter(method, is_real=True, enabled=True):
 
     def register_converter(converter):
-        CONVERTERS[method] = {
-            "converter": converter,
-            "is_real": is_real,
-            "module": module,
-            "module_name": module_name,
-            "qual_name": qual_name,
-            "method_str": module_name + '.' + qual_name,
-            "method_impl": method_impl
-        }
+        CONVERTERS[method] = {"converter": converter, "is_real": is_real}
         return converter
 
     def pass_converter(converter):
