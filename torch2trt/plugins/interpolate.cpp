@@ -192,13 +192,16 @@ int enqueue(int batchSize, const void* const* inputs, void** outputs, void* work
 int32_t enqueue(int32_t batchSize, void const* const* inputs, void* const* outputs, void* workspace,
         cudaStream_t stream) noexcept override {
 #endif
+    std::cout << "HELLO INTERPOLATION" << std::endl;
     // get input / output dimensions
     std::vector<long> batch_input_sizes = input_sizes;
     std::vector<long> batch_output_sizes = output_sizes;
+    std::cout << "Going to insert " << std::endl;
     batch_input_sizes.insert(batch_input_sizes.begin(), batchSize);
     batch_output_sizes.insert(batch_output_sizes.begin(), batchSize);
 
     // create tensor wrappers
+    std::count << "INPUT " << batch_input_sizes << " OUTPUT " << batch_output_sizes << std::endl;
     at::Tensor input = at::from_blob((void*) inputs[0], batch_input_sizes, [](void*){}, tensor_options);
     at::Tensor output = at::from_blob(outputs[0], batch_output_sizes, [](void*){}, tensor_options);
 
