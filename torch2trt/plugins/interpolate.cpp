@@ -126,7 +126,7 @@ public:
     dims.nbDims = inputs->nbDims;
 
     dims.d[0] = inputs->d[0];
-    for (int i = 0; i < size.size(); i++) {
+    for (int i = 0; (uint32_t)i < size.size(); i++) {
       dims.d[i + 1] = size[i];
     }
 
