@@ -213,6 +213,8 @@ int32_t enqueue(int32_t batchSize, void const* const* inputs, void* const* outpu
 
     // make torch cuda stream wait on tensorrt work
     cudaStreamWaitEvent(torch_stream.stream(), event, 0);
+    std::cout << "Input size " << input.sizes() << std::endl;
+    std::cout << "      Output size A " << output.sizes() << std::endl; 
 
     // enqueue work
     if (mode == "bilinear") {
@@ -224,6 +226,7 @@ int32_t enqueue(int32_t batchSize, void const* const* inputs, void* const* outpu
     } else if (mode == "bicubic") {
       at::upsample_bicubic2d_out(output, input, {size[0], size[1]}, align_corners);
     }
+    std::cout << "      Output size B " << output.sizes() << std::endl; 
 
     // capture event on enqueued stream
     cudaEvent_t torch_event;
