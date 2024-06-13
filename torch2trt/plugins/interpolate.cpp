@@ -201,7 +201,7 @@ int32_t enqueue(int32_t batchSize, void const* const* inputs, void* const* outpu
     batch_output_sizes.insert(batch_output_sizes.begin(), batchSize);
 
     // create tensor wrappers
-    std::count << "INPUT " << batch_input_sizes << " OUTPUT " << batch_output_sizes << std::endl;
+    std::cout << "INPUT " << batch_input_sizes << " OUTPUT " << batch_output_sizes << std::endl;
     at::Tensor input = at::from_blob((void*) inputs[0], batch_input_sizes, [](void*){}, tensor_options);
     at::Tensor output = at::from_blob(outputs[0], batch_output_sizes, [](void*){}, tensor_options);
 
