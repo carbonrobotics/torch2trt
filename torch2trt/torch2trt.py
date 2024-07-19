@@ -551,6 +551,7 @@ def torch2trt(module,
               onnx_opset=None,
               max_batch_size=None,
               avg_timing_iterations=None,
+              layer_precisions=None,
               **kwargs):
 
     # capture arguments to provide to context
@@ -657,6 +658,13 @@ def torch2trt(module,
 
             outputs_flat = output_flattener.flatten(outputs)
             ctx.mark_outputs(outputs_flat, output_names)
+
+    for i in range(len(network.num_layers)):
+        layer = network.get_layer(i)
+        print(layer.name)
+        if layer.name in layer_precisions:
+            precision = layer_precisions[layer.name]
+            layer.precision = precision
 
     # set max workspace size
     if trt_version() < "10.0":
