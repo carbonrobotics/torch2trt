@@ -362,6 +362,10 @@ class LayerNamingNetworkWrapper(object):
         self._ctx = ctx
         self._network = network
         self._layer_counts = defaultdict(lambda: 0)
+        self._precision = None
+
+    def set_precision(self, precision):
+        self._precision = precision
 
     def _set_layer_name(self, layer):
         def arg_str(arg):
@@ -374,6 +378,8 @@ class LayerNamingNetworkWrapper(object):
         kwargs = ["%s=%s" % (key, arg_str(arg)) for key, arg in self._ctx.method_kwargs.items()]
         layer.name = "[%s #%d] %s(%s)" % (layer.type.name, self._layer_counts[layer.type.name],
                                           self._ctx.method_str, ", ".join(args + kwargs))
+        if self._precision is not None:
+            layer.precision = self._precision
 
     def __getattr__(self, name):
         attr = getattr(self._network, name)
