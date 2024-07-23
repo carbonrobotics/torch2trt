@@ -329,6 +329,10 @@ class NetworkWrapper(object):
         self._ctx = ctx
         self._network = network
         self._layer_counts = defaultdict(lambda: 0)
+        self._precision = None
+
+    def set_precision(self, precision):
+        self._precision = precision
 
     def _configure_layer(self, layer):
         with use_shape_wrapping(False):
@@ -356,6 +360,9 @@ class NetworkWrapper(object):
                 layer.name = layer.name + '(' + device_type_str(orig_device_type) + ')'
     #         "%s [%s #%d, %s] %s(%s)" % (self._ctx.current_module_name(), layer.type.name, self._layer_counts[layer.type.name], device_type_str(device_type),
     #                                           self._ctx.method_str, ", ".join(args + kwargs))
+
+            if self._precision is not None:
+                layer.precision = self._precision
     
         
     def __getattr__(self, name):
