@@ -683,7 +683,7 @@ def torch2trt(module,
     config.DLA_core = dla_core
     
     if strict_type_constraints:
-        config.set_flag(trt.BuilderFlag.STRICT_TYPES)
+        config.set_flag(trt.BuilderFlag.PREFER_PRECISION_CONSTRAINTS)
 
     if int8_mode:
 
