@@ -2,7 +2,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 from torch2trt.torch2trt import *                                 
 from torch2trt.module_test import add_module_test
-import collections
+import collections.abc
 
 
 def has_interpolate_plugin():
@@ -67,7 +67,7 @@ def convert_interpolate_trt7(ctx):
     shape = size
     if shape != None:
         shape_prefix = [input.size(1)] if ctx.network.has_implicit_batch_dimension else [input.size(0), input.size(1)]
-        if isinstance(shape, collections.Sequence):
+        if isinstance(shape, collections.abc.Sequence):
            shape  = shape_prefix + list(shape)
         else:
             shape = shape_prefix + [shape] * input_dim
@@ -76,7 +76,7 @@ def convert_interpolate_trt7(ctx):
 
     scales = scale_factor
     if scales != None:
-        if not isinstance(scales, collections.Sequence):
+        if not isinstance(scales, collections.abc.Sequence):
             scales = [scales] * input_dim
         layer.scales = [1] + list(scales)
 
