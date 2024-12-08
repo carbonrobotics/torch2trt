@@ -2085,6 +2085,10 @@ def convert_unsqueeze(ctx):
         new_shape_trt.append(
             ctx.network.add_slice(input_shape_trt, [i], [1], [1]).get_output(0)
         )
+
+    if dim < 0:
+        # Negative dim will correspond to unsqueeze() applied at dim = dim + input.dim() + 1.
+        dim += len(input.shape) + 1
     
     # add unsqueeze dim
     new_shape_trt.insert(
