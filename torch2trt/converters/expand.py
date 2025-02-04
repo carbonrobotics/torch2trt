@@ -8,8 +8,8 @@ def convert_expand(ctx):
     sizes = ctx.method_args[1:]
     output = ctx.method_return
     
-    inshape = tuple(input.shape)[1:] # exclude batch
-    shape = tuple(output.shape)[1:]
+    inshape = tuple(input.shape)
+    shape = tuple(output.shape)
     ndim = len(shape)
     start = tuple([0]*ndim)
     stride = tuple([int(i == o) for i, o in zip(inshape, shape)])  # stride == 1 if dimensions match, 0 otherwise
