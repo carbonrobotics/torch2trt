@@ -547,6 +547,7 @@ def torch2trt(module,
               int8_calib_dataset=None,
               int8_calib_algorithm=DEFAULT_CALIBRATION_ALGORITHM,
               int8_calib_batch_size=1,
+              int8_calib_profile_index=0,
               use_onnx=False,
               default_device_type=trt.DeviceType.GPU,
               dla_core=0,
@@ -785,9 +786,15 @@ def torch2trt(module,
         config.add_optimization_profile(profile)
         profiles.append(profile)
 
-    # For INT8 mode, use the first profile for calibration
+    # For INT8 mode, use the specified profile for calibration
     if int8_mode:
-        config.set_calibration_profile(profiles[0])
+        # Validate calibration profile index
+        if int8_calib_profile_index < 0 or int8_calib_profile_index >= len(profiles):
+            raise ValueError(
+                f"int8_calib_profile_index={int8_calib_profile_index} is out of range. "
+                f"Must be between 0 and {len(profiles)-1} (number of profiles: {len(profiles)})"
+            )
+        config.set_calibration_profile(profiles[int8_calib_profile_index])
 
     # BUILD ENGINE
 

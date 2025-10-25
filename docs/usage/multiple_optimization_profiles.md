@@ -207,7 +207,18 @@ model_trt = torch2trt(
 
 ### INT8 Mode
 
+When using INT8 mode with multiple profiles, you can specify which profile to use for calibration:
+
 ```python
+# Define profiles for different use cases
+min_shapes = [
+    [(1, 3, 224, 224)],    # Profile 0: Small batch, standard resolution
+    [(8, 3, 224, 224)],    # Profile 1: Large batch, standard resolution
+    [(1, 3, 512, 512)]     # Profile 2: Small batch, high resolution
+]
+
+# If your primary workload is high-resolution inference,
+# calibrate using profile 2 for best accuracy on that workload
 model_trt = torch2trt(
     model,
     [torch.randn(1, 3, 224, 224).cuda()],
@@ -215,11 +226,16 @@ model_trt = torch2trt(
     opt_shapes=opt_shapes,
     max_shapes=max_shapes,
     int8_mode=True,
-    int8_calib_dataset=calibration_dataset
+    int8_calib_dataset=calibration_dataset,
+    int8_calib_profile_index=2  # Use profile 2 for calibration
 )
 ```
 
-When using INT8 mode with multiple profiles, the first profile is used for calibration by default.
+**Important**: Choose the calibration profile that best represents your primary use case:
+- Different input shapes can produce different activation ranges
+- Batch size and spatial resolution affect calibration statistics
+- Using the wrong profile may reduce accuracy on your main workload
+- Default is profile 0 (first profile) if not specified
 
 ### ONNX Export
 
@@ -233,6 +249,96 @@ model_trt = torch2trt(
     use_onnx=True
 )
 ```
+
+## INT8 Calibration with Multiple Profiles
+
+### Does the Calibration Profile Matter?
+
+**Yes, it can significantly matter.** INT8 calibration determines quantization scales by analyzing activation ranges during inference. Different input shapes can produce different activation statistics, which affects the quality of quantization:
+
+#### Why Different Profiles Produce Different Calibration Results:
+
+1. **Batch size effects**:
+   - Larger batches may have different statistical properties
+   - Batch normalization layers behave differently with different batch sizes
+   - Aggregation operations (mean, max pooling) can produce different ranges
+
+2. **Spatial resolution effects**:
+   - Different image sizes activate different numerical ranges
+   - Downsampling operations produce different intermediate values
+   - Edge cases at boundaries may appear only at certain resolutions
+
+3. **Numerical precision**:
+   - Larger inputs may accumulate different floating-point errors
+   - Different computation patterns can affect final activation ranges
+
+### Choosing the Right Calibration Profile
+
+**Rule of thumb**: Calibrate using the profile that represents your **primary or most accuracy-critical workload**.
+
+#### Example Scenarios:
+
+**Scenario 1: High-resolution inference is critical**
+```python
+min_shapes = [
+    [(1, 3, 224, 224)],    # Profile 0: Fast preview
+    [(1, 3, 1024, 1024)]   # Profile 1: High-quality (primary use case)
+]
+
+model_trt = torch2trt(
+    model, [x],
+    min_shapes=min_shapes, opt_shapes=opt_shapes, max_shapes=max_shapes,
+    int8_mode=True,
+    int8_calib_dataset=calib_dataset,
+    int8_calib_profile_index=1  # Optimize INT8 for high-resolution
+)
+```
+
+**Scenario 2: Batch processing is most common**
+```python
+min_shapes = [
+    [(1, 3, 224, 224)],     # Profile 0: Single-image serving
+    [(16, 3, 224, 224)]     # Profile 1: Batch processing (primary use case)
+]
+
+model_trt = torch2trt(
+    model, [x],
+    min_shapes=min_shapes, opt_shapes=opt_shapes, max_shapes=max_shapes,
+    int8_mode=True,
+    int8_calib_dataset=calib_dataset,
+    int8_calib_profile_index=1  # Optimize INT8 for batch workloads
+)
+```
+
+### Calibration Dataset Considerations
+
+The calibration dataset should contain inputs matching the shape range of your chosen profile:
+
+```python
+# If calibrating with profile 1 (high-resolution profile)
+calib_dataset = ListDataset()
+for img in calibration_images:
+    # Use high-resolution images matching profile 1's range
+    calib_dataset.insert((img.resize(1024, 1024).cuda(),))
+
+model_trt = torch2trt(
+    model, [x],
+    min_shapes=min_shapes, opt_shapes=opt_shapes, max_shapes=max_shapes,
+    int8_mode=True,
+    int8_calib_dataset=calib_dataset,
+    int8_calib_profile_index=1
+)
+```
+
+### Validating Your Choice
+
+To verify your calibration profile choice:
+
+1. **Measure accuracy** on your primary workload with different calibration profiles
+2. **Compare quantization errors** between profiles
+3. **Test edge cases** specific to each profile's shape range
+
+If accuracy differs significantly, choose the profile that gives best results for your most important use case.
 
 ## Best Practices
 

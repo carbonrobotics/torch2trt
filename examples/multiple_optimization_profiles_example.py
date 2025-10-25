@@ -162,32 +162,33 @@ def example_multiple_batch_profiles():
 
 
 def example_fp16_int8_with_multiple_profiles():
-    """Example: Multiple profiles with FP16 or INT8 mode"""
-    print("\n=== Example 4: Multiple Profiles with FP16 ===")
+    """Example: Multiple profiles with FP16 and INT8 calibration profile selection"""
+    print("\n=== Example 4: Multiple Profiles with FP16 and INT8 ===")
 
     model = nn.Conv2d(3, 16, kernel_size=3, padding=1).cuda().eval()
 
-    # Multiple profiles work with all TensorRT features
+    # Define profiles for different resolutions
     min_shapes = [
-        [(1, 3, 224, 224)],
-        [(1, 3, 512, 512)]
+        [(1, 3, 224, 224)],    # Profile 0: Standard resolution
+        [(1, 3, 512, 512)]     # Profile 1: High resolution (primary use case)
     ]
     opt_shapes = [
         [(1, 3, 224, 224)],
-        [(1, 3, 512, 512)]
+        [(1, 3, 768, 768)]
     ]
     max_shapes = [
         [(4, 3, 224, 224)],
-        [(4, 3, 512, 512)]
+        [(2, 3, 1024, 1024)]
     ]
 
+    # Example with FP16
     model_trt_fp16 = torch2trt(
         model,
         [torch.randn(1, 3, 224, 224).cuda()],
         min_shapes=min_shapes,
         opt_shapes=opt_shapes,
         max_shapes=max_shapes,
-        fp16_mode=True  # Enable FP16 precision
+        fp16_mode=True
     )
 
     print("✓ Created TensorRT engine with 2 profiles and FP16 precision")
@@ -195,6 +196,31 @@ def example_fp16_int8_with_multiple_profiles():
     x = torch.randn(1, 3, 512, 512).cuda()
     output = model_trt_fp16(x)
     print(f"✓ FP16 inference successful: {x.shape} -> {output.shape}")
+
+    # Example with INT8 and calibration profile selection
+    # Note: This example shows the API, but would need a real calibration dataset
+    print("\n  INT8 calibration profile selection:")
+    print("  - If high-resolution (512x512+) is your primary workload,")
+    print("    use int8_calib_profile_index=1 to calibrate on profile 1")
+    print("  - This ensures best INT8 accuracy for your main use case")
+    print("  - The calibration dataset should contain images matching that profile's size")
+
+    # Commented example (would need real calibration data):
+    # from torch2trt.dataset import ListDataset
+    # calib_dataset = ListDataset()
+    # for _ in range(100):
+    #     calib_dataset.insert((torch.randn(1, 3, 768, 768).cuda(),))
+    #
+    # model_trt_int8 = torch2trt(
+    #     model,
+    #     [torch.randn(1, 3, 224, 224).cuda()],
+    #     min_shapes=min_shapes,
+    #     opt_shapes=opt_shapes,
+    #     max_shapes=max_shapes,
+    #     int8_mode=True,
+    #     int8_calib_dataset=calib_dataset,
+    #     int8_calib_profile_index=1  # Calibrate using profile 1 (high-res)
+    # )
 
 
 def main():
