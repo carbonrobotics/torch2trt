@@ -49,6 +49,46 @@ y_trt = model_trt(x)
 print(torch.max(torch.abs(y - y_trt)))
 ```
 
+### Multiple Optimization Profiles
+
+torch2trt supports multiple TensorRT optimization profiles, allowing you to optimize performance across different input shape ranges:
+
+```python
+# Define multiple optimization profiles for different image sizes
+min_shapes = [
+    [(1, 3, 32, 32)],      # Profile 0: Small images
+    [(1, 3, 224, 224)],    # Profile 1: Medium images
+    [(1, 3, 512, 512)]     # Profile 2: Large images
+]
+
+opt_shapes = [
+    [(1, 3, 64, 64)],
+    [(1, 3, 320, 320)],
+    [(1, 3, 768, 768)]
+]
+
+max_shapes = [
+    [(4, 3, 128, 128)],
+    [(4, 3, 384, 384)],
+    [(2, 3, 1024, 1024)]
+]
+
+# Create engine with multiple profiles
+model_trt = torch2trt(
+    model,
+    [x],
+    min_shapes=min_shapes,
+    opt_shapes=opt_shapes,
+    max_shapes=max_shapes
+)
+
+# TensorRT automatically selects the best profile for each input
+y_small = model_trt(torch.randn(1, 3, 64, 64).cuda())
+y_large = model_trt(torch.randn(1, 3, 768, 768).cuda())
+```
+
+For more information, see the [documentation](docs/usage/multiple_optimization_profiles.md) and [example](examples/multiple_optimization_profiles_example.py).
+
 ### Save and load
 
 We can save the model as a ``state_dict``.

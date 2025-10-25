@@ -581,27 +581,95 @@ def torch2trt(module,
 
     # infer default parameters from dataset
 
-    if min_shapes == None:
-        min_shapes_flat = [tuple(t) for t in dataset.min_shapes(flat=True)]
-    else:
-        min_shapes_flat = input_flattener.flatten(min_shapes)
+    # Helper function to detect if shapes represent multiple profiles
+    def is_multiple_profiles(shapes):
+        if shapes is None:
+            return False
+        # Check if it's a list of lists (multiple profiles)
+        # Single profile: [(1, 3, 224, 224)] or [[1, 3, 224, 224]]
+        # Multiple profiles: [[(1, 3, 224, 224)], [(1, 3, 512, 512)]]
+        if isinstance(shapes, (list, tuple)) and len(shapes) > 0:
+            first_elem = shapes[0]
+            if isinstance(first_elem, (list, tuple)) and len(first_elem) > 0:
+                # Check if first element of first element is also a list/tuple
+                # This would indicate multiple profiles
+                if isinstance(first_elem[0], (list, tuple)):
+                    return True
+        return False
 
-    if max_shapes == None:
-        max_shapes_flat = [tuple(t) for t in dataset.max_shapes(flat=True)]
+    # Detect if we have multiple profiles
+    has_multiple_profiles = (
+        is_multiple_profiles(min_shapes) or
+        is_multiple_profiles(max_shapes) or
+        is_multiple_profiles(opt_shapes)
+    )
+
+    if has_multiple_profiles:
+        # Handle multiple optimization profiles
+        # Determine number of profiles
+        num_profiles = 0
+        if is_multiple_profiles(min_shapes):
+            num_profiles = len(min_shapes)
+        elif is_multiple_profiles(max_shapes):
+            num_profiles = len(max_shapes)
+        elif is_multiple_profiles(opt_shapes):
+            num_profiles = len(opt_shapes)
+
+        # Process each profile
+        min_shapes_profiles = []
+        max_shapes_profiles = []
+        opt_shapes_profiles = []
+
+        for profile_idx in range(num_profiles):
+            # Get shapes for this profile
+            if min_shapes is None:
+                profile_min = [tuple(t) for t in dataset.min_shapes(flat=True)]
+            else:
+                profile_min = input_flattener.flatten(min_shapes[profile_idx])
+
+            if max_shapes is None:
+                profile_max = [tuple(t) for t in dataset.max_shapes(flat=True)]
+            else:
+                profile_max = input_flattener.flatten(max_shapes[profile_idx])
+
+            if opt_shapes is None:
+                profile_opt = [tuple(t) for t in dataset.median_numel_shapes(flat=True)]
+            else:
+                profile_opt = input_flattener.flatten(opt_shapes[profile_idx])
+
+            min_shapes_profiles.append(profile_min)
+            max_shapes_profiles.append(profile_max)
+            opt_shapes_profiles.append(profile_opt)
     else:
-        max_shapes_flat = input_flattener.flatten(max_shapes)
-    
-    if opt_shapes == None:
-        opt_shapes_flat = [tuple(t) for t in dataset.median_numel_shapes(flat=True)]
-    else:
-        opt_shapes_flat = input_flattener.flatten(opt_shapes)
+        # Single profile (original behavior)
+        if min_shapes == None:
+            min_shapes_flat = [tuple(t) for t in dataset.min_shapes(flat=True)]
+        else:
+            min_shapes_flat = input_flattener.flatten(min_shapes)
+
+        if max_shapes == None:
+            max_shapes_flat = [tuple(t) for t in dataset.max_shapes(flat=True)]
+        else:
+            max_shapes_flat = input_flattener.flatten(max_shapes)
+
+        if opt_shapes == None:
+            opt_shapes_flat = [tuple(t) for t in dataset.median_numel_shapes(flat=True)]
+        else:
+            opt_shapes_flat = input_flattener.flatten(opt_shapes)
+
+        # Wrap in lists for uniform handling later
+        min_shapes_profiles = [min_shapes_flat]
+        max_shapes_profiles = [max_shapes_flat]
+        opt_shapes_profiles = [opt_shapes_flat]
 
     # handle legacy max_batch_size
     if max_batch_size is not None:
-        min_shapes_flat = [(1,) + s[1:] for s in min_shapes_flat]
-        max_shapes_flat = [(max_batch_size,) + s[1:] for s in max_shapes_flat]
+        for i in range(len(min_shapes_profiles)):
+            min_shapes_profiles[i] = [(1,) + s[1:] for s in min_shapes_profiles[i]]
+            max_shapes_profiles[i] = [(max_batch_size,) + s[1:] for s in max_shapes_profiles[i]]
 
-    dynamic_axes_flat = infer_dynamic_axes(min_shapes_flat, max_shapes_flat)
+    # Compute dynamic axes from first profile (they should be consistent across all profiles)
+    dynamic_axes_flat = infer_dynamic_axes(min_shapes_profiles[0], max_shapes_profiles[0])
     
     if default_device_type == trt.DeviceType.DLA:
         for value in dynamic_axes_flat:
@@ -700,19 +768,26 @@ def torch2trt(module,
             )
             config.int8_calibrator = calibrator
 
-    # OPTIMIZATION PROFILE
-    profile = builder.create_optimization_profile()
-    for index, name in enumerate(input_names):
-        profile.set_shape(
-            name,
-            min_shapes_flat[index],
-            opt_shapes_flat[index],
-            max_shapes_flat[index]
-        )
-    config.add_optimization_profile(profile)
+    # OPTIMIZATION PROFILES
+    # Create multiple optimization profiles if provided
+    profiles = []
+    for profile_idx, (min_shapes_flat, opt_shapes_flat, max_shapes_flat) in enumerate(
+        zip(min_shapes_profiles, opt_shapes_profiles, max_shapes_profiles)
+    ):
+        profile = builder.create_optimization_profile()
+        for index, name in enumerate(input_names):
+            profile.set_shape(
+                name,
+                min_shapes_flat[index],
+                opt_shapes_flat[index],
+                max_shapes_flat[index]
+            )
+        config.add_optimization_profile(profile)
+        profiles.append(profile)
 
+    # For INT8 mode, use the first profile for calibration
     if int8_mode:
-        config.set_calibration_profile(profile)
+        config.set_calibration_profile(profiles[0])
 
     # BUILD ENGINE
 
